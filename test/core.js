@@ -3,12 +3,32 @@
  */
 
 import assert from 'node:assert/strict'
-import {promises as fs, renameSync} from 'node:fs'
+import * as fs from 'node:fs'
 import process from 'node:process'
 import {URL, pathToFileURL} from 'node:url'
 import test from 'node:test'
 import semver from 'semver'
 import {resolve} from '../index.js'
+import {defaultResolve} from '../lib/resolve.js'
+
+/**
+ * The strict equivalence assertion tests a strict equality relation.
+ * @param {string} actual
+ * @param {string} end
+ * @param {string} [message]
+ * @returns {void}
+ */
+function assertEndsWith(actual, end, message) {
+  if (!actual.endsWith(end)) {
+    throw new assert.AssertionError({
+      actual,
+      expected: end,
+      message,
+      operator: 'endsWith',
+      stackStartFn: assertEndsWith
+    })
+  }
+}
 
 const windows = process.platform === 'win32'
 const nodeBefore18 = semver.lt(process.versions.node, '18.0.0')
@@ -19,7 +39,7 @@ const run = (/** @type {() => void} */ f) => f()
 process.on('exit', async () => {
   try {
     // Has to be sync.
-    renameSync('package.json.bak', 'package.json')
+    fs.renameSync('package.json.bak', 'package.json')
   } catch (error) {
     const exception = /** @type {ErrnoException} */ (error)
     // ignore if not found, which will happen because baseline.js sometimes
@@ -35,7 +55,7 @@ test(
   async function () {
     assert(resolve, 'expected `resolve` to exist (needed for TS in baseline)')
 
-    await fs.rename('package.json', 'package.json.bak')
+    await fs.renameSync('package.json', 'package.json.bak')
 
     try {
       resolve('', import.meta.url)
@@ -132,24 +152,21 @@ test(
       'should resolve a directory (3)'
     )
 
-    assert.equal(
+    assertEndsWith(
       resolve('micromark', import.meta.url),
-      new URL('../node_modules/micromark/index.js', import.meta.url).href,
+      '/node_modules/micromark/index.js',
       'should resolve a bare specifier to a package'
     )
 
-    assert.equal(
+    assertEndsWith(
       resolve('f-ck/index.js', import.meta.url),
-      new URL('../node_modules/f-ck/index.js', import.meta.url).href,
+      '/node_modules/f-ck/index.js',
       'should resolve a bare specifier plus path'
     )
 
-    assert.equal(
+    assertEndsWith(
       resolve('@bcoe/v8-coverage', import.meta.url),
-      new URL(
-        '../node_modules/@bcoe/v8-coverage/dist/lib/index.js',
-        import.meta.url
-      ).href,
+      '/node_modules/@bcoe/v8-coverage/dist/lib/index.js',
       'should resolve a bare specifier w/ scope to a package'
     )
 
@@ -213,15 +230,15 @@ test(
       )
     }
 
-    assert.equal(
+    assertEndsWith(
       resolve('micromark/stream', import.meta.url),
-      new URL('../node_modules/micromark/stream.js', import.meta.url).href,
+      '/node_modules/micromark/stream.js',
       'should resolve a bare specifier + path which is exported'
     )
 
-    assert.equal(
+    assertEndsWith(
       resolve('micromark', import.meta.url),
-      new URL('../node_modules/micromark/index.js', import.meta.url).href,
+      '/node_modules/micromark/index.js',
       'should cache results'
     )
 
@@ -303,9 +320,9 @@ test(
       'should be able to find files w/o `package.json`'
     )
 
-    assert.equal(
+    assertEndsWith(
       resolve('micromark', import.meta.url),
-      new URL('../node_modules/micromark/index.js', import.meta.url).href,
+      '/node_modules/micromark/index.js',
       'should be able to find packages w/o `package.json`'
     )
 
@@ -675,6 +692,26 @@ test(
       'should be able to resolve a self-import from a sub-file'
     )
 
+    await assert.rejects(
+      async () =>
+        resolve(
+          'package-self-import-2',
+          new URL('node_modules/package-self-import-2/', import.meta.url).href
+        ),
+      /ERR_INVALID_PACKAGE_TARGET/,
+      'should reject invalid main export map entries'
+    )
+
+    await assert.rejects(
+      async () =>
+        resolve(
+          'package-self-import-2/a',
+          new URL('node_modules/package-self-import-2/', import.meta.url).href
+        ),
+      /ERR_INVALID_PACKAGE_TARGET/,
+      'should reject invalid export map entries'
+    )
+
     assert.equal(
       resolve('package-custom-extensions', import.meta.url),
       new URL('node_modules/package-custom-extensions/b.ts', import.meta.url)
@@ -687,6 +724,37 @@ test(
       new URL('node_modules/package-custom-extensions/d.wasm', import.meta.url)
         .href,
       'should be able to resolve a custom `.wasm` extension'
+    )
+
+    assert.throws(() =>
+      defaultResolve('./index.js', fs, {
+        parentURL: import.meta.url,
+        conditions: /** @type {any} */ (1)
+      })
+    )
+
+    assert.equal(
+      defaultResolve('./index.js', fs, {
+        parentURL: import.meta.url,
+        conditions: []
+      }).url,
+      pathToFileURL('test/index.js').href
+    )
+
+    assert.deepEqual(
+      defaultResolve('data:application/json,hi', fs, {
+        parentURL: import.meta.url,
+        conditions: []
+      }).format,
+      'json'
+    )
+
+    assert.deepEqual(
+      defaultResolve('data:text/javascript,hi', fs, {
+        parentURL: import.meta.url,
+        conditions: []
+      }).format,
+      'module'
     )
   }
 )

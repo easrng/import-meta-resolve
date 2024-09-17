@@ -2,6 +2,7 @@
  * @typedef {import('./lib/errors.js').ErrnoException} ErrnoException
  */
 
+import fs from 'node:fs'
 import {defaultResolve} from './lib/resolve.js'
 
 export {moduleResolve} from './lib/resolve.js'
@@ -29,7 +30,7 @@ export function resolve(specifier, parent) {
   }
 
   try {
-    return defaultResolve(specifier, {parentURL: parent}).url
+    return defaultResolve(specifier, fs, {parentURL: parent}).url
   } catch (error) {
     // See: <https://github.com/nodejs/node/blob/45f5c9b/lib/internal/modules/esm/initialize_import_meta.js#L34>
     const exception = /** @type {ErrnoException} */ (error)

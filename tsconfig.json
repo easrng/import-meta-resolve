@@ -11,6 +11,7 @@
     "module": "node16",
     "newLine": "lf",
     "strict": true,
-    "target": "es2020"
+    "target": "es2020",
+    "noImplicitAny": true
   }
 }

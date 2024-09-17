@@ -97,7 +97,11 @@ Full `file:`, `data:`, or `node:` URL (`string`) to the found thing
 
 Throws an [`ErrnoException`][errnoexception].
 
+<!--lint disable-->
+
 ### `moduleResolve(specifier, parent, conditions, preserveSymlinks)`
+
+<!--lint enable-->
 
 The [“Resolver Algorithm Specification”][algo] as detailed in the Node docs
 (which is slightly lower-level than `resolve`).
