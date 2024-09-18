@@ -7,6 +7,7 @@ const asyncLines = base
   // Special baseline test for Node < 20, that doesn't support sync `import.meta.resolve`
   .replace(/\bresolve(?=\()/g, 'await import.meta.resolve')
   .replace(/\bresolve(?=,)/g, 'import.meta.resolve')
+  .replace(/{baseline: false}/, '{baseline: true}')
   .replace(
     /const run = .*$/g,
     'const run = async (/** @type {() => Promise<void>} */ f) => f()'
@@ -19,6 +20,7 @@ const syncLines = base
   // Node < 20 does not support sync import.meta.resolve, so skipping these tests if so
   .replace(/\bresolve(?=\()/g, 'import.meta.resolve')
   .replace(/\bresolve(?=,)/g, 'import.meta.resolve')
+  .replace(/{baseline: false}/, '{baseline: true}')
   .replace(
     '{skip: false}',
     "{skip: semver.lt(process.versions.node, '20.0.0')}"

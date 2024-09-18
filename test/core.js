@@ -33,6 +33,7 @@ function assertEndsWith(actual, end, message) {
 const windows = process.platform === 'win32'
 const nodeBefore18 = semver.lt(process.versions.node, '18.0.0')
 const nodeBefore20 = semver.lt(process.versions.node, '20.0.0')
+const {baseline} = {baseline: false}
 
 const run = (/** @type {() => void} */ f) => f()
 
@@ -63,6 +64,14 @@ test(
     } catch (error) {
       const exception = /** @type {ErrnoException} */ (error)
       assert.equal(exception.code, 'ERR_MODULE_NOT_FOUND', 'empty string')
+    }
+
+    try {
+      resolve('./%2F.js', import.meta.url)
+      assert.fail()
+    } catch (error) {
+      const exception = /** @type {ErrnoException} */ (error)
+      assert.equal(exception.code, 'ERR_INVALID_MODULE_SPECIFIER', 'encoded /')
     }
 
     try {
@@ -415,6 +424,23 @@ test(
         )
       }
 
+      deprecation = undefined
+
+      assert.equal(
+        resolve('package-export-map-6/index.js', import.meta.url),
+        new URL(
+          'node_modules/package-export-map-6/lib/index.js',
+          import.meta.url
+        ).href,
+        'should be able to import packages with double slashes in `exports`, but warn (1)'
+      )
+
+      assert.equal(
+        deprecation,
+        'DEP0166',
+        'should be able to import packages with double slashes in `exports`, but warn (2)'
+      )
+
       process.emitWarning = oldEmitWarning
     })
 
@@ -726,35 +752,80 @@ test(
       'should be able to resolve a custom `.wasm` extension'
     )
 
-    assert.throws(() =>
-      defaultResolve('./index.js', fs, {
-        parentURL: import.meta.url,
-        conditions: /** @type {any} */ (1)
-      })
-    )
+    if (!baseline) {
+      console.log('running nonstandard tests')
 
-    assert.equal(
-      defaultResolve('./index.js', fs, {
-        parentURL: import.meta.url,
-        conditions: []
-      }).url,
-      pathToFileURL('test/index.js').href
-    )
+      assert.throws(() =>
+        defaultResolve('./index.js', fs, {
+          parentURL: import.meta.url,
+          conditions: /** @type {any} */ (1)
+        })
+      )
 
-    assert.deepEqual(
-      defaultResolve('data:application/json,hi', fs, {
-        parentURL: import.meta.url,
-        conditions: []
-      }).format,
-      'json'
-    )
+      assert.equal(
+        defaultResolve('./index.js', fs, {
+          parentURL: import.meta.url,
+          conditions: []
+        }).url,
+        pathToFileURL('test/index.js').href
+      )
 
-    assert.deepEqual(
-      defaultResolve('data:text/javascript,hi', fs, {
-        parentURL: import.meta.url,
-        conditions: []
-      }).format,
-      'module'
-    )
+      assert.equal(
+        defaultResolve('data:application/json,hi', fs, {
+          parentURL: import.meta.url,
+          conditions: []
+        }).format,
+        'json'
+      )
+
+      assert.equal(
+        defaultResolve('data:text/javascript,hi', fs, {
+          parentURL: import.meta.url,
+          conditions: []
+        }).format,
+        'module'
+      )
+
+      assert.deepEqual(
+        defaultResolve('./b.ts', fs, {
+          parentURL: new URL(
+            'node_modules/package-custom-extensions/a.js',
+            import.meta.url
+          ).href
+        }),
+        {
+          format: 'typescript:commonjs',
+          url: new URL(
+            'node_modules/package-custom-extensions/b.ts',
+            import.meta.url
+          ).href
+        }
+      )
+
+      assert.throws(() =>
+        defaultResolve('./b.js', fs, {
+          parentURL: new URL(
+            'node_modules/package-custom-extensions/a.js',
+            import.meta.url
+          ).href
+        })
+      )
+
+      assert.deepEqual(
+        defaultResolve('./b.js', fs, {
+          parentURL: new URL(
+            'node_modules/package-custom-extensions/a.ts',
+            import.meta.url
+          ).href
+        }),
+        {
+          format: 'typescript:commonjs',
+          url: new URL(
+            'node_modules/package-custom-extensions/b.ts',
+            import.meta.url
+          ).href
+        }
+      )
+    }
   }
 )
