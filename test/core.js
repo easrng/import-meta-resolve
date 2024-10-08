@@ -826,6 +826,22 @@ test(
           ).href
         }
       )
+
+      assert.deepEqual(
+        defaultResolve('./b.mjs', fs, {
+          parentURL: new URL(
+            'node_modules/package-custom-extensions/a.ts',
+            import.meta.url
+          ).href
+        }),
+        {
+          format: 'typescript:module',
+          url: new URL(
+            'node_modules/package-custom-extensions/b.mts',
+            import.meta.url
+          ).href
+        }
+      )
     }
   }
 )

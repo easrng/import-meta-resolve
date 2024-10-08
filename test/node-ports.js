@@ -32,6 +32,12 @@ test('node ports', () => {
   assert.throws(() => fileURLToPath(new URL('file://example')))
   assert.throws(() => fileURLToPath(new URL('file:///%2F')))
   assert.equal(path.resolve('.', 'a', '', 'a/..', 'b/./'), '/a/b')
+  assert.equal(path.normalize('./a//a/../b/./'), 'a/b/')
+  assert.equal(path.extname('.a/'), '')
+  assert.equal(path.extname(''), '')
+  assert.equal(path.dirname('.a/b'), '.a')
+  assert.equal(path.dirname('.a/b/'), '.a')
+  assert.equal(path.basename('a/b.c'), 'b.c')
   assert.equal(inspect([[[[[]]]]]), '[ [ [ [Object] ] ] ]')
   const realEmitWarning = process.emitWarning
   const realConsoleWarn = console.warn
