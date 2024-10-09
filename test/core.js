@@ -329,6 +329,16 @@ test(
       'should be able to find files w/o `package.json`'
     )
 
+    assert.equal(
+      resolve(
+        './node_modules/no-package-json/with%20space.js',
+        import.meta.url
+      ),
+      new URL('node_modules/no-package-json/with%20space.js', import.meta.url)
+        .href,
+      'should be able to find files with escaped spaces in their names'
+    )
+
     assertEndsWith(
       resolve('micromark', import.meta.url),
       '/node_modules/micromark/index.js',
@@ -769,6 +779,163 @@ test(
         }).url,
         pathToFileURL('test/index.js').href
       )
+
+      assert.equal(
+        defaultResolve('os', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        'node:os'
+      )
+
+      assert.equal(
+        defaultResolve('node:os', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        'node:os'
+      )
+
+      assert.equal(
+        defaultResolve('./baseline', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        pathToFileURL('test/baseline.js').href
+      )
+
+      assert.equal(
+        defaultResolve('../test', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        pathToFileURL('test/index.js').href
+      )
+
+      assert.throws(
+        () =>
+          defaultResolve('./node_modules/no-package-json/with%20space.js', fs, {
+            parentURL: import.meta.url,
+            conditions: ['require']
+          }),
+        'should be able to find files with escaped spaces in their names'
+      )
+
+      assert.equal(
+        defaultResolve('no-package-json/with space', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        pathToFileURL('test/node_modules/no-package-json/with space.js').href
+      )
+
+      assert.equal(
+        defaultResolve('package-main-1', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        pathToFileURL('test/node_modules/package-main-1/index.js').href
+      )
+
+      assert.equal(
+        defaultResolve('#a', fs, {
+          parentURL: new URL(
+            'node_modules/package-import-map-1/fake.js',
+            import.meta.url
+          ).href,
+          conditions: ['require']
+        }).url,
+        new URL('node_modules/package-import-map-1/index.js', import.meta.url)
+          .href,
+        'should be able to resolve to something from a main export map w/ package name'
+      )
+
+      assert.equal(
+        defaultResolve('package-self-import-1', fs, {
+          parentURL: new URL(
+            'node_modules/package-self-import-1/',
+            import.meta.url
+          ).href,
+          conditions: ['require']
+        }).url,
+        new URL('node_modules/package-self-import-1/index.js', import.meta.url)
+          .href,
+        'should be able to resolve a self-import'
+      )
+
+      try {
+        defaultResolve('package-invalid-json', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        })
+        assert.fail()
+      } catch (error) {
+        const exception = /** @type {ErrnoException} */ (error)
+        assert.equal(
+          exception.code,
+          'ERR_INVALID_PACKAGE_CONFIG',
+          'should not be able to import packages w/ broken `package.json`s'
+        )
+      }
+
+      assert.equal(
+        defaultResolve('package-export-map-1/a', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        new URL('node_modules/package-export-map-1/b.js', import.meta.url).href,
+        'should be able to resolve to something from an export map (1)'
+      )
+
+      assert.equal(
+        defaultResolve('package-export-map-1/lib/c', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        new URL('node_modules/package-export-map-1/lib/c.js', import.meta.url)
+          .href,
+        'should be able to resolve to something from an export map (2)'
+      )
+
+      assert.equal(
+        defaultResolve('package-export-map-2', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        }).url,
+        new URL('node_modules/package-export-map-2/main.js', import.meta.url)
+          .href,
+        'should be able to resolve to something from a main export map'
+      )
+
+      try {
+        defaultResolve('package-export-map-2/missing', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        })
+        assert.fail()
+      } catch (error) {
+        const exception = /** @type {ErrnoException} */ (error)
+        assert.equal(
+          exception.code,
+          'ERR_PACKAGE_PATH_NOT_EXPORTED',
+          'should not be able to import things not in an export map'
+        )
+      }
+
+      try {
+        defaultResolve('package-export-map-4', fs, {
+          parentURL: import.meta.url,
+          conditions: ['require']
+        })
+        assert.fail()
+      } catch (error) {
+        const exception = /** @type {ErrnoException} */ (error)
+        assert.equal(
+          exception.code,
+          'ERR_PACKAGE_PATH_NOT_EXPORTED',
+          'should not be able to import things from an empty export map'
+        )
+      }
 
       assert.equal(
         defaultResolve('data:application/json,hi', fs, {
