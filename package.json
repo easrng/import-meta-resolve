@@ -1,6 +1,6 @@
 {
   "name": "@easrng/import-meta-resolve",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Resolve things like Node.js — ponyfill for `import.meta.resolve`",
   "license": "MIT",
   "keywords": [
